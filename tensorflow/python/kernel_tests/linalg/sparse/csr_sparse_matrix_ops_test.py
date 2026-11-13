@@ -171,6 +171,7 @@ class CSRSparseMatrixOpsTest(test.TestCase, parameterized.TestCase):
     self.assertAllClose(a_values, a_st_rt_value.values)
     self.assertAllEqual(a_dense_shape, a_st_rt_value.dense_shape)
 
+  @test_util.run_in_graph_and_eager_modes
   def testSparseTensorConversionInvalidInputShapes(self):
     values = constant_op.constant(0.554979503, shape=[5], dtype=dtypes.float32)
     with self.assertRaisesRegex(
@@ -219,6 +220,56 @@ class CSRSparseMatrixOpsTest(test.TestCase, parameterized.TestCase):
           indices=indices, values=values, dense_shape=dense_shape
       )
       self.evaluate(csr)
+
+    # (num_rows + 1) * batch_size overflows int64 and wraps around to 8.
+    with self.assertRaisesRegex(
+        (ValueError, errors.InvalidArgumentError),
+        "csr row index size.*must be <= Int32Max",
+    ):
+      csr = sparse_csr_matrix_ops.sparse_tensor_to_csr_sparse_matrix(
+          indices=constant_op.constant(0, shape=[0, 3], dtype=dtypes.int64),
+          values=constant_op.constant(0.0, shape=[0], dtype=dtypes.float32),
+          dense_shape=constant_op.constant(
+              [4, 0x4000000000000001, 10], dtype=dtypes.int64
+          ),
+      )
+      self.evaluate(csr)
+
+    # With batch_size == 0 the row index size check passes for any num_rows.
+    with self.assertRaisesRegex(
+        (ValueError, errors.InvalidArgumentError),
+        "num_rows must be < Int32Max",
+    ):
+      csr = sparse_csr_matrix_ops.sparse_tensor_to_csr_sparse_matrix(
+          indices=constant_op.constant(0, shape=[0, 3], dtype=dtypes.int64),
+          values=constant_op.constant(0.0, shape=[0], dtype=dtypes.float32),
+          dense_shape=constant_op.constant(
+              [0, int32max, 10], dtype=dtypes.int64
+          ),
+      )
+      self.evaluate(csr)
+
+    # Boundary cases for negative and too large dense_shape dimensions.
+    for dense_shape, error_regex in [
+        ([2**63 - 1, 10], "csr row index size.*must be <= Int32Max"),
+        ([-1, 2, 10], "csr row index size.*must be <= Int32Max"),
+        ([0, -1, 10], "csr row index size.*must be <= Int32Max"),
+        ([2, -1], "num_cols must be >= 0 and < Int32Max"),
+        ([2, int32max], "num_cols must be >= 0 and < Int32Max"),
+    ]:
+      with self.subTest(dense_shape=dense_shape):
+        with self.assertRaisesRegex(
+            (ValueError, errors.InvalidArgumentError), error_regex
+        ):
+          rank = len(dense_shape)
+          csr = sparse_csr_matrix_ops.sparse_tensor_to_csr_sparse_matrix(
+              indices=constant_op.constant(
+                  0, shape=[0, rank], dtype=dtypes.int64
+              ),
+              values=constant_op.constant(0.0, shape=[0], dtype=dtypes.float32),
+              dense_shape=constant_op.constant(dense_shape, dtype=dtypes.int64),
+          )
+          self.evaluate(csr)
 
     with self.assertRaisesRegex(
         (ValueError, errors.InvalidArgumentError),

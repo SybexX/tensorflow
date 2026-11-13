@@ -111,6 +111,7 @@ tf_kernel_library(
         "//tensorflow/core/kernels:slice_op",
         "//tensorflow/core/kernels:sparse_utils",
         "//tensorflow/core/kernels:transpose_functor",
+        "//tensorflow/core/util:overflow",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@eigen_archive//:eigen3",
