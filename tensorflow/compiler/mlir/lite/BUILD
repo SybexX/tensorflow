@@ -1858,6 +1858,7 @@ gentbl_cc_library(
     compatible_with = get_compatible_with_portable(),
     tbl_outs = {
         "operator_converters.inc": ["--gen-operator-converters"],
+        "operator_readers.inc": ["--gen-operator-readers"],
         "runtime_verifiers.inc": ["--gen-runtime-verifiers"],
     },
     tblgen = ":converter-gen",
@@ -1869,28 +1870,23 @@ gentbl_cc_library(
     ],
 )
 
+# Writers of TFLite operators (MLIR -> FlatBuffer), for export-only users.
 cc_library(
-    name = "flatbuffer_tflite_operator_lib",
+    name = "flatbuffer_tflite_operator_writers",
     srcs = [
         "flatbuffer_operator.cc",
         "operator_converters.inc",
     ],
     hdrs = [
-        "flatbuffer_operator.h",
+        "flatbuffer_operator_writers.h",
     ],
     deps = [
         ":convert_type",
         ":converter_inc",
-        ":shape_and_size_utils",
         ":tensorflow_lite_ops",
-        "//tensorflow/compiler/mlir/lite/core/c:tflite_common",
         "//tensorflow/compiler/mlir/lite/schema:schema_fbs",
         "//tensorflow/compiler/mlir/lite/schema:schema_fbs_with_mutable",
         "//tensorflow/compiler/mlir/lite/schema:schema_utils",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
         "@flatbuffers",
         "@llvm-project//llvm:Analysis",
         "@llvm-project//llvm:Support",
@@ -1900,6 +1896,38 @@ cc_library(
         "@stablehlo//:stablehlo_ops",
         "@stablehlo//:vhlo_ops",
         "@stablehlo//:vhlo_types",
+    ],
+)
+
+# The full operator conversion API: the writers plus the readers of FlatBuffer
+# operator options (FlatBuffer -> MLIR attributes) used by the importer.
+cc_library(
+    name = "flatbuffer_tflite_operator_lib",
+    srcs = [
+        "flatbuffer_operator_readers.cc",
+        "operator_readers.inc",
+    ],
+    hdrs = [
+        "flatbuffer_operator.h",
+    ],
+    deps = [
+        ":convert_type",
+        ":converter_inc",
+        ":flatbuffer_tflite_operator_writers",
+        ":shape_and_size_utils",
+        ":tensorflow_lite_ops",
+        ":tf_convert_type",
+        "//tensorflow/compiler/mlir/lite/core/c:tflite_common",
+        "//tensorflow/compiler/mlir/lite/schema:schema_fbs_with_mutable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@flatbuffers",
+        "@llvm-project//llvm:Support",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Support",
+        "@stablehlo//:stablehlo_ops",
+        "@stablehlo//:vhlo_ops",
     ],
 )
 
@@ -1944,6 +1972,7 @@ cc_library(
         ":stateful_ops_utils",
         ":string_utils",
         ":tensorflow_lite",
+        ":tensorflow_lite_ops",
         ":tf_convert_type",
         "//tensorflow/compiler/mlir:op_or_arg_name_mapper",
         "//tensorflow/compiler/mlir/lite/core:macros",
@@ -2062,10 +2091,24 @@ cc_library(
     deps = [
         ":tensorflow_lite_ops",
         "//tensorflow/compiler/mlir/lite/schema:schema_fbs",
-        "//tensorflow/compiler/mlir/tensorflow:tensorflow_types",
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:Support",
+    ],
+)
+
+tf_cc_test(
+    name = "convert_type_test",
+    srcs = ["utils/convert_type_test.cc"],
+    deps = [
+        ":convert_type",
+        ":tensorflow_lite_ops",
+        ":tf_convert_type",
+        "@com_google_googletest//:gtest_main",
+        "@llvm-project//mlir:IR",
+        "//tensorflow/compiler/mlir/lite/schema:schema_fbs",
+        # Only to check the tf_type conversions.
+        "//tensorflow/core/ir/types:Dialect",
     ],
 )
 
@@ -2078,11 +2121,14 @@ cc_library(
         "utils/tf_convert_type.h",
     ],
     deps = [
+        ":convert_type",
         "//tensorflow/compiler/mlir/lite/schema:schema_fbs",
+        "//tensorflow/compiler/mlir/tensorflow:tensorflow_types",
         "//tensorflow/core:protos_all_cc",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@llvm-project//mlir:IR",
     ],
 )
 
