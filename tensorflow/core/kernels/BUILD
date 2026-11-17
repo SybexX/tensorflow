@@ -8338,6 +8338,8 @@ cc_library(
     features = ["-layering_check"],
     deps = [
         "//tensorflow/core:framework",
+        "//tensorflow/core/lib/core:threadpool",
+        "@eigen_archive//:eigen3",
         "@gemmlowp",
     ],
 )
