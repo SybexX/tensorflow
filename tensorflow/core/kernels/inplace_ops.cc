@@ -15,6 +15,8 @@ limitations under the License.
 
 #define EIGEN_USE_THREADS
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "tensorflow/core/framework/bfloat16.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/register_types.h"
@@ -79,6 +81,12 @@ class ParallelConcatUpdate : public OpKernel {
                 absl::InvalidArgumentError(
                     absl::StrCat("0th dimension of value = ", value.dim_size(0),
                                  " must be greater than loc_ = ", loc_)));
+    // A non-empty 0th dimension is required since `loc_` is wrapped modulo
+    // the number of rows (and `loc_` may be negative).
+    OP_REQUIRES(ctx, value.dim_size(0) > 0,
+                absl::InvalidArgumentError(
+                    absl::StrCat("0th dimension of value = ", value.dim_size(0),
+                                 " must be greater than 0")));
 
     const Tensor& update = ctx->input(1);
 

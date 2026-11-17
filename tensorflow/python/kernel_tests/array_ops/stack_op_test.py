@@ -21,6 +21,7 @@ import numpy as np
 from tensorflow.python import tf2
 from tensorflow.python.eager import context
 from tensorflow.python.eager import def_function
+from tensorflow.python.eager import execute
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import errors
@@ -117,6 +118,20 @@ class StackOpTest(test.TestCase):
         errors.InvalidArgumentError, r"0th dimension .* must be greater than"
     ):
       f()
+
+  def testParallelConcatUpdateEmptyValueNegativeLoc(self):
+    # Regression test for b/512810464: an empty 0th dimension combined with a
+    # negative `loc` used to cause a modulo-by-zero crash (SIGFPE).
+    with context.eager_mode(), self.assertRaisesRegex(
+        errors.InvalidArgumentError, r"0th dimension .* must be greater than 0"
+    ):
+      execute.execute(
+          b"_ParallelConcatUpdate",
+          1,
+          inputs=[array_ops.zeros((0, 0)), array_ops.zeros((1, 0))],
+          attrs=("T", dtypes.float32.as_datatype_enum, "loc", -1),
+          ctx=context.context(),
+      )
 
   def testParallelConcatShapeOverflow(self):
     # Regression test for GitHub issue 108663: a shape whose element count
