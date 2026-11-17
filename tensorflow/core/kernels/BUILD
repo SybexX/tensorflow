@@ -1898,7 +1898,6 @@ tf_cuda_cc_test(
     deps = [
         ":bincount_op",
         ":ops_testutil",
-        ":ops_util",
         "//tensorflow/core:core_cpu",
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
@@ -4760,6 +4759,7 @@ tf_kernel_library(
         "//tensorflow/core:lib_internal",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@eigen_archive//:eigen3",
     ],
 )
